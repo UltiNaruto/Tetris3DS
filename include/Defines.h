@@ -6,7 +6,7 @@
 #define GAME_AREA_RIGHT  311
 #define GAME_AREA_BOTTOM 240
 
-#define NUM_LEVELS       5    // number of levels in the game
+#define NUM_LEVELS       99    // number of levels in the game
 #define POINTS_PER_LINE  525  // points player receives for completing a line
 #define POINTS_PER_LEVEL 6300 // points player needs to advance a level
 

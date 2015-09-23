@@ -1,8 +1,10 @@
 #include <3ds.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
-#include <3ds/console.h>
+#include <algorithm>
 #include <vector>
 #include <math.h>
 #include <malloc.h>
@@ -17,9 +19,9 @@
 #include "block_yellow_bgr.h"
 #include "Defines.h" // Our defines header
 #include "Enums.h"   // Our enums header
+using namespace std;
 #include "Functions.h"
 #include "cBlock.h"
-using namespace std;
 static u32 brightnessSub;
 Handle threadHandle, threadRequest;
 volatile bool threadExit = false;
@@ -61,25 +63,31 @@ vector<cSquare*>   g_OldSquares;        // The squares that no longer form the f
 int				   g_Score = 0;         // Players current score
 int				   g_Level = 1;         // Current level player is on
 int				   g_FocusBlockSpeed = INITIAL_SPEED; // Speed of the focus block
+bool started = true;
+bool paused = false;
 bool quit = false;
 
 int main(int argc, char **argv)
 {
 	aptInit();
-	gfxInitDefault(); 
+	gfxInitDefault();
+	initCfgu();
 	gfxSet3D(false);
 	ClearScreenBuffer(GFX_TOP);
 	consoleInit(GFX_BOTTOM, NULL);
+	loadHighScores();
 	Init();
 	
 	while (aptMainLoop())
 	{
-		if(quit)
-			break;
 		Game();
+		if(quit)
+			goto quitGame;
 	}
 
+	quitGame:
 	Shutdown();
+	exitCfgu();
 	gfxExit();
 	aptExit();
 	return 0;
@@ -99,40 +107,45 @@ void Init()
 
 void Game()
 {
+	if(!started)
+		return;
 	static int force_down_counter = 0;
 	static int slide_counter = SLIDE_TIME;
 	
 	HandleGameInput();
 	
-	force_down_counter++;
-
-	if (force_down_counter >= g_FocusBlockSpeed)
+	if(!paused)
 	{
-		// Always check for collisions before moving anything //
-		if ( !CheckWallCollisions(g_FocusBlock, DOWN) && !CheckEntityCollisions(g_FocusBlock, DOWN) )
+		force_down_counter++;
+
+		if (force_down_counter >= g_FocusBlockSpeed)
 		{
-			g_FocusBlock->Move(DOWN); // move the focus block
-			force_down_counter = 0;   // reset our counter
+			// Always check for collisions before moving anything //
+			if ( !CheckWallCollisions(g_FocusBlock, DOWN) && !CheckEntityCollisions(g_FocusBlock, DOWN) )
+			{
+				g_FocusBlock->Move(DOWN); // move the focus block
+				force_down_counter = 0;   // reset our counter
+			}
 		}
-	}
 
-	// Check to see if focus block's bottom has hit something. If it has, we decrement our counter. //
-	if ( CheckWallCollisions(g_FocusBlock, DOWN) || CheckEntityCollisions(g_FocusBlock, DOWN) )
-	{
-		slide_counter--;
-	}
-	// If there isn't a collision, we reset our counter.    //
-	// This is in case the player moves out of a collision. //
-	else 
-	{
-		slide_counter = SLIDE_TIME;
-	}
-	// If the counter hits zero, we reset it and call our //
-	// function that handles changing the focus block.    //
-	if (slide_counter == 0)
-	{
-		slide_counter = SLIDE_TIME;
-		HandleBottomCollision();
+		// Check to see if focus block's bottom has hit something. If it has, we decrement our counter. //
+		if ( CheckWallCollisions(g_FocusBlock, DOWN) || CheckEntityCollisions(g_FocusBlock, DOWN) )
+		{
+			slide_counter--;
+		}
+		// If there isn't a collision, we reset our counter.    //
+		// This is in case the player moves out of a collision. //
+		else 
+		{
+			slide_counter = SLIDE_TIME;
+		}
+		// If the counter hits zero, we reset it and call our //
+		// function that handles changing the focus block.    //
+		if (slide_counter == 0)
+		{
+			slide_counter = SLIDE_TIME;
+			HandleBottomCollision();
+		}
 	}
 	drawBackground(GFX_TOP, background_bgr, background_bgr_size);
 	g_FocusBlock->Draw();
@@ -151,7 +164,12 @@ void Game()
 	printf("FPS %f\n", CurrentFPS);
 	printf("Level : %d\n", g_Level);
 	printf("Score : %d\n", g_Score);
-	printf("Needed Score : %d", g_Level*POINTS_PER_LEVEL);
+	printf("Needed Score : %d\n", g_Level*POINTS_PER_LEVEL);
+	printf("\n#### High Scores ####\n\n");
+	for(int i=0;i<10;i++)
+		printf("%d | %s : %d (%d)\n", (i+1), getHighScores().at(i).Name, getHighScores().at(i).Score, getHighScores().at(i).Level);
+	if(paused)
+	printf("\nGame is paused");
 	g_Timer = svcGetSystemTick();
 }
 
@@ -161,7 +179,9 @@ void GameWon()
 	consoleClear();
 	printf("\x1b[0;0H");
 	printf("You Won!!!\nQuit Game (Yes(A) or No(B))?\n                               ");
+	addNewHighScore(g_Score, g_Level);
 	HandleWinLoseInput();
+	hidScanInput();
 }
 
 void GameLost()
@@ -170,7 +190,9 @@ void GameLost()
 	consoleClear();
 	printf("\x1b[0;0H");
 	printf("You Lost!!!\nQuit Game (Yes(A) or No(B))?\n                               ");
+	addNewHighScore(g_Score, g_Level);
 	HandleWinLoseInput();
+	hidScanInput();
 }
 
 void Shutdown()
@@ -204,47 +226,53 @@ void HandleGameInput()
 
 	u32 kDown = hidKeysDown();
 	u32 kUp = hidKeysUp();
-	if(kDown & KEY_UP)
+	if(!paused)
 	{
-		if (!CheckRotationCollisions(g_FocusBlock))
+		if(kDown & KEY_UP)
 		{
-			g_FocusBlock->Rotate();
+			if (!CheckRotationCollisions(g_FocusBlock))
+			{
+				g_FocusBlock->Rotate();
+			}
 		}
-	}
-	if(kDown & KEY_LEFT)
-	{
-		if ( !CheckWallCollisions(g_FocusBlock, LEFT) &&
-			 !CheckEntityCollisions(g_FocusBlock, LEFT) )
+		if(kDown & KEY_LEFT)
 		{
-			g_FocusBlock->Move(LEFT);
+			if ( !CheckWallCollisions(g_FocusBlock, LEFT) &&
+				 !CheckEntityCollisions(g_FocusBlock, LEFT) )
+			{
+				g_FocusBlock->Move(LEFT);
+			}
 		}
-	}
-	if(kDown & KEY_RIGHT)
-	{
-		if ( !CheckWallCollisions(g_FocusBlock, RIGHT) &&
-			 !CheckEntityCollisions(g_FocusBlock, RIGHT) )
+		if(kDown & KEY_RIGHT)
 		{
-			g_FocusBlock->Move(RIGHT);
+			if ( !CheckWallCollisions(g_FocusBlock, RIGHT) &&
+				 !CheckEntityCollisions(g_FocusBlock, RIGHT) )
+			{
+				g_FocusBlock->Move(RIGHT);
+			}
 		}
-	}
-	if(kDown & KEY_DOWN)
-	{
-		down_pressed = true;
+		if(kDown & KEY_DOWN)
+		{
+			down_pressed = true;
+		}
+		
+		if(kUp & KEY_DOWN)
+		{
+			down_pressed = false;
+		}
+		
+		if(down_pressed)
+		{
+			if ( !CheckWallCollisions(g_FocusBlock, DOWN) &&
+				 !CheckEntityCollisions(g_FocusBlock, DOWN) )
+			{
+				g_FocusBlock->Move(DOWN);
+			}
+		}
 	}
 	
-	if(kUp & KEY_DOWN)
-	{
-		down_pressed = false;
-	}
-	
-	if(down_pressed)
-	{
-		if ( !CheckWallCollisions(g_FocusBlock, DOWN) &&
-			 !CheckEntityCollisions(g_FocusBlock, DOWN) )
-		{
-			g_FocusBlock->Move(DOWN);
-		}
-	}
+	if (kDown & KEY_SELECT)
+		paused = !paused;
 
 	if (kDown & KEY_START)
 		quit = true;
@@ -252,6 +280,7 @@ void HandleGameInput()
 
 void HandleWinLoseInput()
 {
+	started = false;
 	u32 kDown = 0;
 	while(!(kDown & KEY_A) && !(kDown & KEY_B))
 	{
@@ -264,6 +293,7 @@ void HandleWinLoseInput()
 				delete g_OldSquares[i];
 			}
 			g_OldSquares.clear();
+			started = true;
 			Init();
 			return;  
 		}

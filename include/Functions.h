@@ -6,6 +6,182 @@ double	FPStime;
 double	Ticks;
 double	FirstFlipTime;
 double	ctrticks;
+struct HIGH_SCORE {
+	char Name[11];
+	u64 Score;
+	u8 Level;
+};
+
+vector<HIGH_SCORE> highScores;
+
+char** split(char* a_str, const char a_delim)
+{
+    char** result    = 0;
+    size_t count     = 0;
+    char* tmp        = a_str;
+    char* last_comma = 0;
+    char delim[2];
+    delim[0] = a_delim;
+    delim[1] = 0;
+
+    /* Count how many elements will be extracted. */
+    while (*tmp)
+    {
+        if (a_delim == *tmp)
+        {
+            count++;
+            last_comma = tmp;
+        }
+        tmp++;
+    }
+
+    /* Add space for trailing token. */
+    count += last_comma < (a_str + strlen(a_str) - 1);
+
+    /* Add space for terminating null string so caller
+       knows where the list of returned strings ends. */
+    count++;
+
+    result = (char**)malloc(sizeof(char*) * count);
+
+    if (result)
+    {
+        size_t idx  = 0;
+        char* token = strtok(a_str, delim);
+
+        while (token)
+        {
+            assert(idx < count);
+            *(result + idx++) = strdup(token);
+            token = strtok(0, delim);
+        }
+		printf("idx = %d\n", idx);
+		printf("count = %d", count);
+        assert(idx == count - 1);
+        *(result + idx) = 0;
+    }
+
+    return result;
+}
+
+char * getProfileName()
+{
+	Result res;
+	u8 * tempProfileName = (u8*)malloc(0x16);
+	char * profileName = (char*)malloc(0x16/2);
+	int i;
+	for(i=0;i<(0x16/2);i++)
+		profileName[i] = 0;
+	res = CFGU_GetConfigInfoBlk2(0x1C, 0xA0000, tempProfileName);
+	for(i=0;i<(0x16/2);i++)
+	{
+		profileName[i] = (char)((u16*)tempProfileName)[i];
+	}
+	return profileName;
+}
+
+bool compareScore(const HIGH_SCORE &a, const HIGH_SCORE &b)
+{
+    return a.Score > b.Score;
+}
+
+vector<HIGH_SCORE> getHighScores()
+{
+	return highScores;
+}
+
+void saveHighScores(bool def=false)
+{
+	if(def)
+	{
+		for(int i=0;i<10;i++)
+		{
+			HIGH_SCORE newHighScore;
+			sprintf(newHighScore.Name,"COM_%d", (i+1));
+			newHighScore.Score = POINTS_PER_LEVEL*10 - i * POINTS_PER_LEVEL;
+			newHighScore.Level = 13-(i+2);
+			highScores.push_back(newHighScore);
+		}
+		std::sort(highScores.begin(), highScores.end(), compareScore);
+		FILE * file = fopen("highScores.bin", "w");
+		if(file == NULL)
+		{
+			aptSetStatusPower(APP_EXITING);
+			return;
+		}
+		for(int i=0;i<10;i++)
+		{
+			fprintf(file, "%s|%d|%d\n", highScores.at(i).Name, highScores.at(i).Score, highScores.at(i).Level);
+		}
+		fclose(file);
+	}
+	else
+	{
+		std::sort(highScores.begin(), highScores.end(), compareScore);
+		FILE * file = fopen("highScores.bin", "w+");
+		if(file == NULL)
+		{
+			aptSetStatusPower(APP_EXITING);
+			return;
+		}
+		for(int i=0;i<10;i++)
+		{
+			fprintf(file, "%s|%d|%d\n", highScores.at(i).Name, highScores.at(i).Score, highScores.at(i).Level);
+		}
+		fclose(file);
+	}
+}
+
+void loadHighScores()
+{
+	int size = 1024, pos;
+    int c;
+	char *buffer = (char *)malloc(size);
+	FILE * file = fopen("highScores.bin", "r");
+	highScores.clear();
+	if(file == NULL)
+	{
+		saveHighScores(true);
+	}
+	else
+	{
+		do {
+			pos = 0;
+			do{
+				c = fgetc(file);
+				if(c != EOF) buffer[pos++] = (char)c;
+				if(pos >= size - 1) {
+					size *=2;
+					buffer = (char*)realloc(buffer, size);
+				}
+			}while(c != EOF && c != '\n');
+			buffer[pos] = 0;
+			char ** params = split(buffer, '|');
+			HIGH_SCORE newHighScore;
+			strcpy(newHighScore.Name, params[0]);
+			newHighScore.Score = atoi(params[1]);
+			newHighScore.Level = atoi(params[2]);
+			highScores.push_back(newHighScore);
+		} while(c != EOF);
+		std::sort(highScores.begin(), highScores.end(), compareScore);
+		fclose(file);
+	}
+}
+
+void addNewHighScore(int score, int level)
+{
+	if(score > highScores.back().Score)
+	{
+		highScores.pop_back();
+		HIGH_SCORE newHighScore;
+		strcpy(newHighScore.Name, getProfileName());
+		newHighScore.Score = score;
+		newHighScore.Level = level;
+		highScores.push_back(newHighScore);
+		std::sort(highScores.begin(), highScores.end(), compareScore);
+		saveHighScores();
+	}
+}
 
 double srv_get_microseconds()
 {
