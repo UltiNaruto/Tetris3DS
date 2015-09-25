@@ -66,6 +66,7 @@ int				   g_FocusBlockSpeed = INITIAL_SPEED; // Speed of the focus block
 bool started = true;
 bool paused = false;
 bool quit = false;
+bool down_pressed = false;
 
 int main(int argc, char **argv)
 {
@@ -82,10 +83,9 @@ int main(int argc, char **argv)
 	{
 		Game();
 		if(quit)
-			goto quitGame;
+			break;
 	}
-
-	quitGame:
+	
 	Shutdown();
 	exitCfgu();
 	gfxExit();
@@ -97,6 +97,7 @@ void Init()
 {
 	srand(time(NULL));
 	
+	down_pressed = false;
 	g_Score = 0;         // Players current score
 	g_Level = 1;         // Current level player is on
 	g_FocusBlockSpeed = INITIAL_SPEED; // Speed of the focus block
@@ -107,6 +108,8 @@ void Init()
 
 void Game()
 {
+	if(quit)
+		return;
 	if(!started)
 		return;
 	static int force_down_counter = 0;
@@ -145,6 +148,8 @@ void Game()
 		{
 			slide_counter = SLIDE_TIME;
 			HandleBottomCollision();
+			if(quit)
+				return;
 		}
 	}
 	drawBackground(GFX_TOP, background_bgr, background_bgr_size);
@@ -167,7 +172,12 @@ void Game()
 	printf("Needed Score : %d\n", g_Level*POINTS_PER_LEVEL);
 	printf("\n#### High Scores ####\n\n");
 	for(int i=0;i<10;i++)
-		printf("%d | %s : %d (%d)\n", (i+1), getHighScores().at(i).Name, getHighScores().at(i).Score, getHighScores().at(i).Level);
+	{
+		if(i<9)
+			printf("%d  | %s | %d | %d\n", (i+1), getHighScores().at(i).Name, getHighScores().at(i).Score, getHighScores().at(i).Level);
+		else
+			printf("%d | %s | %d | %d\n", (i+1), getHighScores().at(i).Name, getHighScores().at(i).Score, getHighScores().at(i).Level);
+	}
 	if(paused)
 	printf("\nGame is paused");
 	g_Timer = svcGetSystemTick();
@@ -200,10 +210,6 @@ void Shutdown()
 	cSquare** temp_array_1 = g_FocusBlock->GetSquares();
 	cSquare** temp_array_2 = g_NextBlock->GetSquares();
 
-	// Delete our blocks 
-	delete g_FocusBlock;
-	delete g_NextBlock;
-
 	// Delete the temporary arrays of squares 
 	for (int i=0; i<4; i++)
 	{
@@ -211,14 +217,16 @@ void Shutdown()
 		delete temp_array_2[i];
 	}
 	
+	// Delete our blocks 
+	delete g_FocusBlock;
+	delete g_NextBlock;
+	
 	// Delete the squares that are in the game area 
 	for (int i=0; i<g_OldSquares.size(); i++)
 	{
 		delete g_OldSquares[i];
 	}
 }
-
-bool down_pressed = false;
 
 void HandleGameInput()
 {

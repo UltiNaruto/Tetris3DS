@@ -8,8 +8,8 @@ double	FirstFlipTime;
 double	ctrticks;
 struct HIGH_SCORE {
 	char Name[11];
-	u64 Score;
-	u8 Level;
+	int Score;
+	int Level;
 };
 
 vector<HIGH_SCORE> highScores;
@@ -55,8 +55,8 @@ char** split(char* a_str, const char a_delim)
             *(result + idx++) = strdup(token);
             token = strtok(0, delim);
         }
-		printf("idx = %d\n", idx);
-		printf("count = %d", count);
+		/*printf("idx = %d\n", idx);
+		printf("count = %d", count);*/
         assert(idx == count - 1);
         *(result + idx) = 0;
     }
@@ -111,7 +111,10 @@ void saveHighScores(bool def=false)
 		}
 		for(int i=0;i<10;i++)
 		{
-			fprintf(file, "%s|%d|%d\n", highScores.at(i).Name, highScores.at(i).Score, highScores.at(i).Level);
+			fprintf(file, "%s|", highScores.at(i).Name);
+			fprintf(file, "%d|", highScores.at(i).Score);
+			fprintf(file, "%d", highScores.at(i).Level);
+			fprintf(file, "\n");
 		}
 		fclose(file);
 	}
@@ -126,7 +129,10 @@ void saveHighScores(bool def=false)
 		}
 		for(int i=0;i<10;i++)
 		{
-			fprintf(file, "%s|%d|%d\n", highScores.at(i).Name, highScores.at(i).Score, highScores.at(i).Level);
+			fprintf(file, "%s|", highScores.at(i).Name);
+			fprintf(file, "%d|", highScores.at(i).Score);
+			fprintf(file, "%d", highScores.at(i).Level);
+			fprintf(file, "\n");
 		}
 		fclose(file);
 	}
@@ -156,11 +162,17 @@ void loadHighScores()
 				}
 			}while(c != EOF && c != '\n');
 			buffer[pos] = 0;
+			if(strlen(buffer) == 0)
+				break;
 			char ** params = split(buffer, '|');
 			HIGH_SCORE newHighScore;
 			strcpy(newHighScore.Name, params[0]);
-			newHighScore.Score = atoi(params[1]);
+			newHighScore.Score = atol(params[1]);
 			newHighScore.Level = atoi(params[2]);
+			/*printf("Name : %s\n", newHighScore.Name);
+			printf("Score : %d\n", newHighScore.Score);
+			printf("Level : %d\n", newHighScore.Level);
+			while(1) {}*/
 			highScores.push_back(newHighScore);
 		} while(c != EOF);
 		std::sort(highScores.begin(), highScores.end(), compareScore);
