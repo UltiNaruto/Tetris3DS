@@ -245,7 +245,7 @@ void drawImage(gfxScreen_t screen, const void * image, int width, int height, in
     for(i = 0; i < height; i++) {
         for(j = 0; j < width; j++) {
             v = (height * i + width) * 3;
-            color_pixel(x + j, y + i, toFB[v], toFB[v++], toFB[v++], fb);
+            color_pixel(x + j, y + i, toFB[v++], toFB[v++], toFB[v++], fb);
         }
     }
 }

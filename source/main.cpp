@@ -37,7 +37,7 @@ bool CheckEntityCollisions(cSquare* square, Direction dir);
 bool CheckWallCollisions(cSquare* square, Direction dir);
 bool CheckEntityCollisions(cBlock* block, Direction dir);
 bool CheckWallCollisions(cBlock* block, Direction dir);
-bool CheckRotationCollisions(cBlock* block); 
+bool CheckRotationCollisions(cBlock* block, Direction dir); 
 void CheckWin();
 void CheckLoss();
 void HandleBottomCollision();
@@ -236,11 +236,25 @@ void HandleGameInput()
 	u32 kUp = hidKeysUp();
 	if(!paused)
 	{
+		if(kDown & KEY_L)
+		{
+			if (!CheckRotationCollisions(g_FocusBlock, LEFT))
+			{
+				g_FocusBlock->Rotate(LEFT);
+			}
+		}
+		if(kDown & KEY_R)
+		{
+			if (!CheckRotationCollisions(g_FocusBlock, RIGHT))
+			{
+				g_FocusBlock->Rotate(RIGHT);
+			}
+		}
 		if(kDown & KEY_UP)
 		{
-			if (!CheckRotationCollisions(g_FocusBlock))
+			if (!CheckRotationCollisions(g_FocusBlock, RIGHT))
 			{
-				g_FocusBlock->Rotate();
+				g_FocusBlock->Rotate(RIGHT);
 			}
 		}
 		if(kDown & KEY_LEFT)
@@ -436,10 +450,10 @@ bool CheckWallCollisions(cBlock* block, Direction dir)
     return false;
 }
 
-bool CheckRotationCollisions(cBlock* block) 
+bool CheckRotationCollisions(cBlock* block, Direction dir) 
 {
     // Get an array of values for the locations of the rotated block's squares
-    int* temp_array = block->GetRotatedSquares();
+    int* temp_array = block->GetRotatedSquares(dir);
 
     // Distance between two touching squares 
     int distance = SQUARE_MEDIAN * 2;

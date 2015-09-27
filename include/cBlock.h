@@ -167,7 +167,7 @@ public:
 	}
 
 	// This function is explained in the tutorial. //
-	void Rotate()
+	void Rotate(Direction dir)
 	{
 		int x1, y1, x2, y2;
 
@@ -178,10 +178,18 @@ public:
 
 			x1 -= m_CenterX;
 			y1 -= m_CenterY;
-
-			x2 = - y1;
-			y2 = x1;
-
+			
+			if(dir == RIGHT)
+			{
+				x2 = - y1;
+				y2 = x1;	
+			}
+			else if(dir == LEFT)
+			{
+				x2 = y1;
+				y2 = - x1;
+			}
+			
 			x2 += m_CenterX;
 			y2 += m_CenterY;
 
@@ -192,7 +200,7 @@ public:
 
 	// This function gets the locations of the squares after //
 	// a rotation and returns an array of those values.      //
-	int* GetRotatedSquares()
+	int* GetRotatedSquares(Direction dir)
 	{
 		int* temp_array = new int[8];
 		int x1, y1, x2, y2;
@@ -204,10 +212,18 @@ public:
 
 			x1 -= m_CenterX;
 			y1 -= m_CenterY;
-
-			x2 = - y1;
-			y2 = x1;
-
+			
+			if(dir == RIGHT)
+			{
+				x2 = - y1;
+				y2 = x1;	
+			}
+			else if(dir == LEFT)
+			{
+				x2 = y1;
+				y2 = - x1;
+			}
+			
 			x2 += m_CenterX;
 			y2 += m_CenterY;
 
