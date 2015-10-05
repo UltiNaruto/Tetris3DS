@@ -308,7 +308,7 @@ void HandleWinLoseInput()
 	{
 		hidScanInput();
 		kDown = hidKeysDown();
-		if (kDown & KEY_A)
+		if (kDown & KEY_B)
 		{
 			for (int i=0; i<g_OldSquares.size(); i++)
 			{
@@ -321,7 +321,7 @@ void HandleWinLoseInput()
 		}
 		// If player chooses to continue playing, we pop off    //
 		// current state and push exit and menu states back on. //
-		if (kDown & KEY_B)
+		if (kDown & KEY_A)
 		{
 			quit = true;
 			return;  
