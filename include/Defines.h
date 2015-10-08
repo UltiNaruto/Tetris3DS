@@ -11,7 +11,7 @@
 #define POINTS_PER_LEVEL 6300 // points player needs to advance a level
 
 #define INITIAL_SPEED 60  // initial interval at which focus block moves down 
-#define SPEED_CHANGE  10  // the above interval is reduced by this much each level
+#define SPEED_CHANGE  5  // the above interval is reduced by this much each level
 
 #define SLIDE_TIME      15
 #define SQUARES_PER_ROW 10  // number of squares that fit in a row
