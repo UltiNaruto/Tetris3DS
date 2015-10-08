@@ -219,10 +219,7 @@ void ClearScreenBuffer(gfxScreen_t screen)
 // It helped me a lot to draw blocks
 
 void color_pixel(int x, int y, u8 r, u8 g, u8 b, u8* screen) {
-    if(y < 1) {
-    	return;
-    }
-    int HEIGHT = 240;
+	int HEIGHT = 240;
     y = HEIGHT - y;
     int hulp = x;
     x = y;

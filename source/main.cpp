@@ -56,20 +56,17 @@ void disableBacklight() {
 	GSPGPU_WriteHWRegs(NULL, REG_LCDBACKLIGHTSUB, &off, 4);
 }
 
-int				    g_Timer;             // Our timer is just an integer
-cBlock*			    g_FocusBlock = NULL; // The block the player is controlling
-cBlock*			    g_NextBlock  = NULL; // The next block to be the focus block
-vector<cSquare*>    g_OldSquares;        // The squares that no longer form the focus block
-int				    g_Score = 0;         // Players current score
-int				    g_Level = 1;         // Current level player is on
-int				    g_FocusBlockSpeed = INITIAL_SPEED; // Speed of the focus block
-double				g_KeyPressTimer = srv_get_microseconds();
+int				   g_Timer;             // Our timer is just an integer
+cBlock*			   g_FocusBlock = NULL; // The block the player is controlling
+cBlock*			   g_NextBlock  = NULL; // The next block to be the focus block
+vector<cSquare*>   g_OldSquares;        // The squares that no longer form the focus block
+int				   g_Score = 0;         // Players current score
+int				   g_Level = 1;         // Current level player is on
+int				   g_FocusBlockSpeed = INITIAL_SPEED; // Speed of the focus block
 bool started = true;
 bool paused = false;
 bool quit = false;
 bool down_pressed = false;
-bool left_pressed = false;
-bool right_pressed = false;
 
 int main(int argc, char **argv)
 {
@@ -101,8 +98,6 @@ void Init()
 	srand(time(NULL));
 	
 	down_pressed = false;
-	left_pressed = false;
-	right_pressed = false;
 	g_Score = 0;         // Players current score
 	g_Level = 1;         // Current level player is on
 	g_FocusBlockSpeed = INITIAL_SPEED; // Speed of the focus block
@@ -238,7 +233,6 @@ void HandleGameInput()
 	hidScanInput();
 
 	u32 kDown = hidKeysDown();
-	u32 kHeld = hidKeysHeld();
 	u32 kUp = hidKeysUp();
 	if(!paused)
 	{
@@ -262,24 +256,26 @@ void HandleGameInput()
 			{
 				g_FocusBlock->Rotate(RIGHT);
 			}
-		}		
-		if(kDown & KEY_A)
+		}
+		if(kDown & KEY_LEFT)
 		{
-			while ( !CheckWallCollisions(g_FocusBlock, DOWN) &&
-				 !CheckEntityCollisions(g_FocusBlock, DOWN) )
+			if ( !CheckWallCollisions(g_FocusBlock, LEFT) &&
+				 !CheckEntityCollisions(g_FocusBlock, LEFT) )
 			{
-				g_FocusBlock->Move(DOWN);
+				g_FocusBlock->Move(LEFT);
 			}
 		}
-		
-		if(kUp & KEY_LEFT)
+		if(kDown & KEY_RIGHT)
 		{
-			left_pressed = false;
+			if ( !CheckWallCollisions(g_FocusBlock, RIGHT) &&
+				 !CheckEntityCollisions(g_FocusBlock, RIGHT) )
+			{
+				g_FocusBlock->Move(RIGHT);
+			}
 		}
-		
-		if(kUp & KEY_RIGHT)
+		if(kDown & KEY_DOWN)
 		{
-			right_pressed = false;
+			down_pressed = true;
 		}
 		
 		if(kUp & KEY_DOWN)
@@ -287,55 +283,13 @@ void HandleGameInput()
 			down_pressed = false;
 		}
 		
-		printf("\x1b[18;0Hsrv_get_microseconds() - g_KeyPressTimer = %f", srv_get_microseconds() - g_KeyPressTimer);
-		
-		if(srv_get_microseconds() - g_KeyPressTimer >= 2.5*16000.0)
+		if(down_pressed)
 		{
-			if(kHeld & KEY_LEFT)
+			if ( !CheckWallCollisions(g_FocusBlock, DOWN) &&
+				 !CheckEntityCollisions(g_FocusBlock, DOWN) )
 			{
-				left_pressed = true;
+				g_FocusBlock->Move(DOWN);
 			}
-		
-			if(kHeld & KEY_RIGHT)
-			{
-				right_pressed = true;
-			}
-			
-			if(kHeld & KEY_DOWN)
-			{
-				down_pressed = true;
-			}
-			
-			if(left_pressed)
-			{
-				if ( !CheckWallCollisions(g_FocusBlock, LEFT) && !CheckEntityCollisions(g_FocusBlock, LEFT) )
-				{
-					g_FocusBlock->Move(LEFT);
-				}
-			}
-				
-			if(right_pressed)
-			{
-				if ( !CheckWallCollisions(g_FocusBlock, RIGHT) && !CheckEntityCollisions(g_FocusBlock, RIGHT) )
-				{
-					g_FocusBlock->Move(RIGHT);
-				}
-			}
-			
-			if(down_pressed)
-			{
-				if ( !CheckWallCollisions(g_FocusBlock, DOWN) && !CheckEntityCollisions(g_FocusBlock, DOWN) )
-				{
-					g_FocusBlock->Move(DOWN);
-				}
-			}
-			g_KeyPressTimer = srv_get_microseconds();
-		}
-		else
-		{
-			left_pressed = false;
-			right_pressed = false;
-			down_pressed = false;
 		}
 	}
 	
@@ -348,14 +302,13 @@ void HandleGameInput()
 
 void HandleWinLoseInput()
 {
-	for (int i=srv_get_microseconds();srv_get_microseconds() - i >= 5*16000.0;);
 	started = false;
 	u32 kDown = 0;
 	while(!(kDown & KEY_A) && !(kDown & KEY_B))
 	{
 		hidScanInput();
 		kDown = hidKeysDown();
-		if (kDown & KEY_B)
+		if (kDown & KEY_A)
 		{
 			for (int i=0; i<g_OldSquares.size(); i++)
 			{
@@ -368,7 +321,7 @@ void HandleWinLoseInput()
 		}
 		// If player chooses to continue playing, we pop off    //
 		// current state and push exit and menu states back on. //
-		if (kDown & KEY_A)
+		if (kDown & KEY_B)
 		{
 			quit = true;
 			return;  
